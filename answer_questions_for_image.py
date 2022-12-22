@@ -9,6 +9,10 @@ import tqdm
 from transformers import (AutoTokenizer, GPT2Tokenizer,
                           VisionEncoderDecoderModel, ViTImageProcessor)
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+feature_extractor: ViTImageProcessor = ViTImageProcessor.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
+tokenizer: GPT2Tokenizer = AutoTokenizer.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
+
 def collate_fn(batch):
 	images, questions, answers = zip(*batch)
 	return images, questions, answers
@@ -24,7 +28,7 @@ class VQADataset(torch.utils.data.Dataset):
 		self.annotations = annotations
 
 	def __len__(self):
-		return 8 # len(self.questions['questions'])
+		return len(self.questions['questions'])
 
 	def __getitem__(self, index):
 		question = self.questions['questions'][index]
@@ -75,16 +79,13 @@ def predict(model: VisionEncoderDecoderModel, image: Image.Image, question: str)
 		decoder_input_ids=input_ids,
 		max_length=100,
 		do_sample=True,
-		top_k=50,
-		top_p=0.95,
+		temperature=0.1,
 	)
 	prediction = tokenizer.batch_decode(outputs, skip_special_tokens=True)
 	return prediction
 
-if __name__ == '__main__':
+def run_training():
 	model: VisionEncoderDecoderModel = VisionEncoderDecoderModel.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
-	feature_extractor: ViTImageProcessor = ViTImageProcessor.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
-	tokenizer: GPT2Tokenizer = AutoTokenizer.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
 
 	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 	model.to(device)
@@ -115,7 +116,7 @@ if __name__ == '__main__':
 				epoch_total_n += len(images)
 				pbar.update(len(images))
 				pbar.set_postfix(loss=loss.item(), epoch_loss=epoch_total_loss / epoch_total_n)
-		# torch.save(model.state_dict(), f"model_{epoch}.pt")
+		torch.save(model.state_dict(), f"model_{epoch}.pt")
 	
 	# Demonstrate results
 	# For now, overfit and show the results on the training data
@@ -128,3 +129,27 @@ if __name__ == '__main__':
 			print(f"Prediction: {prediction}")
 			print()
 		break
+
+def run_validation():
+	model: VisionEncoderDecoderModel = VisionEncoderDecoderModel.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
+	model.load_state_dict(torch.load("vqa_model_epoch_0.pt", map_location=device))
+	model.to(device)
+
+	batch_size = 32
+
+	val_dataset = load_split('val')
+	val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
+
+	# Demonstrate results
+	for batch in val_dataloader:
+		images, questions, answers = batch
+		for image, question, answer in zip(images, questions, answers):
+			prediction = predict(model, image, question)
+			print(f"Question: {question}")
+			print(f"Answer: {answer}")
+			print(f"Prediction: {prediction}")
+			print()
+		break
+
+if __name__ == '__main__':
+	run_validation()
