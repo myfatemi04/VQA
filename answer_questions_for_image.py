@@ -4,10 +4,11 @@ from typing import List
 import numpy as np
 import torch
 import torch.utils.data
-from PIL import Image
 import tqdm
-from transformers import (AutoTokenizer, GPT2Tokenizer,
-                          VisionEncoderDecoderModel, ViTImageProcessor)
+from PIL import Image
+from transformers import (AutoTokenizer, CLIPVisionModel, GPT2Model,
+                          GPT2Tokenizer, VisionEncoderDecoderModel,
+                          ViTImageProcessor)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 feature_extractor: ViTImageProcessor = ViTImageProcessor.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
@@ -85,6 +86,10 @@ def predict(model: VisionEncoderDecoderModel, image: Image.Image, question: str)
 	return prediction
 
 def run_training():
+	# clip = CLIPVisionModel.from_pretrained("openai/clip-vit-large-patch14")
+	# vit = clip.vision_model
+	# gpt2 = GPT2Model.from_pretrained("gpt2-large")
+	# model = VisionEncoderDecoderModel(encoder=vit, decoder=gpt2)
 	model: VisionEncoderDecoderModel = VisionEncoderDecoderModel.from_pretrained("nlpconnect/vit-gpt2-image-captioning")
 
 	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
