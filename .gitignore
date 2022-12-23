@@ -3,3 +3,4 @@ train/
 val/
 __pycache__/
 *.pt
+runs
