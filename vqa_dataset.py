@@ -33,6 +33,9 @@ class VQADataset(torch.utils.data.Dataset):
 
 		return image, question_text, answer_text
 
+	def get_image_id(self, index):
+		return self.questions['questions'][index]['image_id']
+
 def load_split(split_name):
 	with open(f"{split_name}/v2_mscoco_{split_name}2014_annotations.json") as f:
 		annotations = json.load(f)
